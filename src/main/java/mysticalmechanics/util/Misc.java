@@ -1,10 +1,10 @@
 package mysticalmechanics.util;
 
+import mysticalmechanics.tileentity.MysticalTileEntityBase;
 import net.minecraft.network.play.server.SPacketBlockChange;
 import net.minecraft.network.play.server.SPacketUpdateTileEntity;
 import net.minecraft.server.management.PlayerChunkMap;
 import net.minecraft.server.management.PlayerChunkMapEntry;
-import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 
@@ -15,7 +15,7 @@ public class Misc {
 		return a == b || Math.abs(a - b) < epsilion;
 	}
 
-	public static void syncTE(TileEntity tile, boolean broken) {
+	public static void syncTE(MysticalTileEntityBase tile) {
 		World world = tile.getWorld();		
 		if (world instanceof WorldServer) {
 			PlayerChunkMap chunkMap = ((WorldServer) world).getPlayerChunkMap();
@@ -25,7 +25,7 @@ public class Misc {
 				int j = tile.getPos().getZ() >> 4;
 				PlayerChunkMapEntry entry = chunkMap.getEntry(i, j);				
 				if (entry != null) {
-					if(broken){
+					if(tile.isBroken()){
 						//tells the client the block has changed if it has been broken
 						entry.sendPacket(new SPacketBlockChange(chunkMap.getWorldServer(),tile.getPos()));	
 					}								 

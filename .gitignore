@@ -22,3 +22,6 @@ eclipse
 run
 classes
 libs
+/usercache.json
+/usernamecache.json
+/options.txt

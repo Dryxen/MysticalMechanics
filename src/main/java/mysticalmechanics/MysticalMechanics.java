@@ -66,24 +66,29 @@ public class MysticalMechanics
     }
 
     @Mod.EventHandler
-    public void init(FMLInitializationEvent event)
-    {
+    public void init(FMLInitializationEvent event){
+    
         GameRegistry.registerTileEntity(TileEntityAxle.class,"mysticalmechanics:axle");
         GameRegistry.registerTileEntity(TileEntityGearbox.class,"mysticalmechanics:gearbox");
         GameRegistry.registerTileEntity(TileEntityMergebox.class,"mysticalmechanics:mergebox");
         GameRegistry.registerTileEntity(TileEntityCreativeMechSource.class,"mysticalmechanics:creative_mech_source");
+        
+        IGearBehavior defaultBehavior = new IGearBehavior() {
+			@Override
+			public double transformPower(TileEntity tile, EnumFacing facing, ItemStack gear, double power) {
+				boolean powered = tile.getWorld().isBlockPowered(tile.getPos());
+				return !powered ? power : 0;
+			}
 
-        MysticalMechanicsAPI.IMPL.registerGear(new ResourceLocation(MODID,"gear_iron"), new OreIngredient("gearIron"), new IGearBehavior() {
-            @Override
-            public double transformPower(TileEntity tile, @Nullable EnumFacing facing, ItemStack gear, double power) {
-                return power;
-            }
+			@Override
+			public void visualUpdate(TileEntity tile, EnumFacing facing, ItemStack gear) {
+				
+			}
+        	
+        };
 
-            @Override
-            public void visualUpdate(TileEntity tile, @Nullable EnumFacing facing, ItemStack gear) {
-                //NOOP
-            }
-        });
+        MysticalMechanicsAPI.IMPL.registerGear(new ResourceLocation(MODID,"gear_iron"), new OreIngredient("gearIron"), defaultBehavior);
+        MysticalMechanicsAPI.IMPL.registerGear(new ResourceLocation(MODID,"gear_gold"), new OreIngredient("gearGold"), defaultBehavior);
         MysticalMechanicsAPI.IMPL.registerGear(new ResourceLocation(MODID,"gear_gold"), new OreIngredient("gearGold"), new IGearBehavior() {
             @Override
             public double transformPower(TileEntity tile, @Nullable EnumFacing facing, ItemStack gear, double power) {
@@ -95,6 +100,7 @@ public class MysticalMechanics
                 //NOOP
             }
         });
+        
         MysticalMechanicsAPI.IMPL.registerGear(new ResourceLocation(MODID,"gear_gold_on"), Ingredient.fromItem(RegistryHandler.GOLD_GEAR_ON), new IGearBehavior() {
             @Override
             public double transformPower(TileEntity tile, @Nullable EnumFacing facing, ItemStack gear, double power) {

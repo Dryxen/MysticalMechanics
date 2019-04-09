@@ -74,7 +74,7 @@ public class BlockGearbox extends Block {
     @Override
     public void neighborChanged(IBlockState state, World world, BlockPos pos, Block block, BlockPos fromPos){
         TileEntityGearbox p = (TileEntityGearbox)world.getTileEntity(pos);
-        p.updateNeighbors();
+        p.updateNeighbors();        
     }
 
     @Override

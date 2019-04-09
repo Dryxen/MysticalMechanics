@@ -1,6 +1,5 @@
 package mysticalmechanics.tileentity;
 
-import mysticalmechanics.api.DefaultMechCapability;
 import mysticalmechanics.api.MysticalMechanicsAPI;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.player.EntityPlayer;
@@ -17,26 +16,13 @@ import net.minecraftforge.common.capabilities.Capability;
 
 import javax.annotation.Nullable;
 
-public class TileEntityCreativeMechSource extends TileEntity implements ITickable {
+public class TileEntityCreativeMechSource extends MysticalTileEntityBase implements ITickable {
     int ticksExisted = 0;
     private double[] wantedPower = new double[]{10,20,40,80,160,320};
+    private double currentPower = 10;
     private int wantedPowerIndex = 0;
-    public DefaultMechCapability capability = new DefaultMechCapability(){
-        @Override
-        public void setPower(double value, EnumFacing from) {
-            if(from == null)
-                super.setPower(value, from);
-        }
-
-        @Override
-        public void onPowerChange(){
-            TileEntityCreativeMechSource source = TileEntityCreativeMechSource.this;
-            source.updateNeighbors();
-            source.markDirty();
-        }
-    };
-
-
+    private boolean isBroken;
+    
     public TileEntityCreativeMechSource(){
         super();
     }
@@ -44,7 +30,7 @@ public class TileEntityCreativeMechSource extends TileEntity implements ITickabl
     @Override
     public NBTTagCompound writeToNBT(NBTTagCompound tag){
         super.writeToNBT(tag);
-        tag.setDouble("mech_power", capability.power);
+        tag.setDouble("mech_power", wantedPower[wantedPowerIndex]);
         tag.setInteger("level",wantedPowerIndex);
         return tag;
     }
@@ -53,7 +39,7 @@ public class TileEntityCreativeMechSource extends TileEntity implements ITickabl
     public void readFromNBT(NBTTagCompound tag){
         super.readFromNBT(tag);
         if (tag.hasKey("mech_power")){
-            capability.power = tag.getDouble("mech_power");
+           currentPower = tag.getDouble("mech_power");
         }
         wantedPowerIndex = tag.getInteger("level") % wantedPower.length;
     }
@@ -86,7 +72,7 @@ public class TileEntityCreativeMechSource extends TileEntity implements ITickabl
     public <T> T getCapability(Capability<T> capability, EnumFacing facing){
         if (capability == MysticalMechanicsAPI.MECH_CAPABILITY){
         	@SuppressWarnings("unchecked")
-			T result = (T) this.capability;
+			T result = (T) this;
             return result;
         }
         return super.getCapability(capability, facing);
@@ -99,17 +85,21 @@ public class TileEntityCreativeMechSource extends TileEntity implements ITickabl
     }
 
     public void breakBlock(World world, BlockPos pos, IBlockState state, EntityPlayer player) {
-        capability.setPower(0f,null);
+    	this.isBroken = true;
+        setPower(0f,null);
         updateNeighbors();
     }
-
+    
+    @Override
     public void updateNeighbors(){
         for (EnumFacing f : EnumFacing.values()){
-            TileEntity t = world.getTileEntity(getPos().offset(f));
-            if (t != null){
+            TileEntity t = world.getTileEntity(getPos().offset(f));            
+            if (t != null){            	
                 if (t.hasCapability(MysticalMechanicsAPI.MECH_CAPABILITY, f.getOpposite())){
-                    t.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, f.getOpposite()).setPower(capability.getPower(f.getOpposite()),f.getOpposite());
-                   // t.markDirty(); this is redundant due to being called once the power changes.
+                	if(t.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, f.getOpposite()).isInput(f.getOpposite())) {
+                		t.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, f.getOpposite()).setPower(getPower(f),f.getOpposite());
+                	}
+                                       
                 }
             }
         }
@@ -119,11 +109,46 @@ public class TileEntityCreativeMechSource extends TileEntity implements ITickabl
     public void update() {
         ticksExisted++;
         double wantedPower = this.wantedPower[wantedPowerIndex];
-        if (capability.getPower(null) != wantedPower){
-            capability.setPower(wantedPower,null);
-            markDirty();
-        }
-        updateNeighbors();
+        if (getPower(null) != wantedPower){
+            setPower(wantedPower,null);            
+        }       
     }
+
+	@Override
+	public IBlockState getBlockState() {		
+		return world.getBlockState(pos);
+	}
+
+	@Override
+	public boolean isBroken() {		
+		return this.isBroken;
+	}
+
+	@Override
+	public double getPower(EnumFacing from) {				
+		return currentPower;
+	}
+
+	@Override
+	public void setPower(double value, EnumFacing from) {		
+		if(from == null) {
+			this.currentPower = value;
+			onPowerChange();
+		}
+	}
+
+	@Override
+	public void onPowerChange() {
+		updateNeighbors();
+        markDirty();		
+	}
+	
+	public boolean isOutput() {
+		return true;
+	}
+	
+	public boolean isInput() {
+		return false;
+	}
 }
 

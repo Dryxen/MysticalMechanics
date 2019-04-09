@@ -1,6 +1,7 @@
 package mysticalmechanics.block;
 
 import mysticalmechanics.tileentity.TileEntityCreativeMechSource;
+import mysticalmechanics.tileentity.TileEntityGearbox;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
@@ -33,6 +34,12 @@ public class BlockCreativeMechSource extends Block {
     public boolean onBlockActivated(World world, BlockPos pos, IBlockState state, EntityPlayer playerIn, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ) {
         TileEntityCreativeMechSource p = (TileEntityCreativeMechSource)world.getTileEntity(pos);
         return p.activate(world, pos, state, playerIn, hand, facing, hitX, hitY, hitZ);
+    }
+    
+    @Override
+    public void neighborChanged(IBlockState state, World world, BlockPos pos, Block block, BlockPos fromPos){
+        TileEntityCreativeMechSource p = (TileEntityCreativeMechSource)world.getTileEntity(pos);
+        p.updateNeighbors();        
     }
 
     @Override

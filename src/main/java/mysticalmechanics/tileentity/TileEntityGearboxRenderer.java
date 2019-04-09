@@ -28,7 +28,7 @@ public class TileEntityGearboxRenderer extends TileEntitySpecialRenderer<TileEnt
 						//GlStateManager.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);								
 
 						EnumFacing direction = EnumFacing.VALUES[face];
-						double powerRatio = tile.capability.getPower(direction);						
+						double powerRatio = tile.getPower(direction);						
 
 						GlStateManager.pushMatrix();
 						GlStateManager.translate(x + 0.5, y + 0.5, z + 0.5);

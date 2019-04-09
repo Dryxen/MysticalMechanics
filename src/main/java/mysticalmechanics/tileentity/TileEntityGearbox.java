@@ -1,14 +1,12 @@
 package mysticalmechanics.tileentity;
 
 import mysticalmechanics.MysticalMechanics;
-import mysticalmechanics.api.DefaultMechCapability;
 import mysticalmechanics.api.IGearBehavior;
 import mysticalmechanics.api.IGearbox;
 import mysticalmechanics.api.MysticalMechanicsAPI;
 import mysticalmechanics.block.BlockGearbox;
 import mysticalmechanics.handler.RegistryHandler;
 import mysticalmechanics.util.ISoundController;
-import mysticalmechanics.util.Misc;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
@@ -30,11 +28,12 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
-public class TileEntityGearbox extends TileEntity implements ITickable, IGearbox, ISoundController {
+public class TileEntityGearbox extends MysticalTileEntityBase implements ITickable, IGearbox, ISoundController {
     EnumFacing from = null;
     public boolean powered = false;
     private boolean isBroken;
     public int connections = 0;
+    public double power = 0;
     public ItemStack[] gears = new ItemStack[]{
             ItemStack.EMPTY,
             ItemStack.EMPTY,
@@ -45,7 +44,7 @@ public class TileEntityGearbox extends TileEntity implements ITickable, IGearbox
     };
     public double angle, lastAngle;
 
-    public DefaultMechCapability capability;
+    //public DefaultMechCapability capability;
 
     //Don't look at me
     public static final int SOUND_SLOW_LV1 = 1;
@@ -62,71 +61,25 @@ public class TileEntityGearbox extends TileEntity implements ITickable, IGearbox
     HashSet<Integer> soundsPlaying = new HashSet<>();
 
     public TileEntityGearbox() {
-        super();
-        capability = createCapability();
-    }
-
-    public DefaultMechCapability createCapability() {
-        return new DefaultMechCapability() {
-            @Override
-            public void onPowerChange() {
-                TileEntityGearbox box = TileEntityGearbox.this;
-                box.updateNeighbors();
-                box.markDirty();
-            }
-
-            @Override
-            public double getPower(EnumFacing from) {
-                ItemStack gearStack = getGear(from);
-                if (from != null && gearStack.isEmpty()) {
-                    return 0;
-                }
-                IGearBehavior behavior = MysticalMechanicsAPI.IMPL.getGearBehavior(gearStack);
-                double power;
-
-                if (from == TileEntityGearbox.this.from || from == null)
-                    power = super.getPower(from);
-                else
-                    power = getPower(TileEntityGearbox.this.from) / ((double) (Math.max(1, getConnections())));
-
-                return behavior.transformPower(TileEntityGearbox.this, from, gearStack, power);
-            }
-
-            @Override
-            public void setPower(double value, EnumFacing from) {
-                ItemStack gearStack = getGear(from);
-                if (from != null && gearStack.isEmpty()) {
-                    return;
-                }
-                if (from == TileEntityGearbox.this.from || from == null) {
-                    super.setPower(value, from);
-                    if (value != getPower(null)) {
-                        onPowerChange();
-                    }
-                }
-            }
-
-            @Override
-            public boolean isInput(EnumFacing from) {
-                return TileEntityGearbox.this.from == from;
-            }
-
-            @Override
-            public boolean isOutput(EnumFacing from) {
-                return TileEntityGearbox.this.from != from;
-            }
-        };
-    }
-
+        super();        
+    }  
+    
+    @Override
     public void updateNeighbors() {
-        IBlockState state = world.getBlockState(getPos());
+        IBlockState state = world.getBlockState(getPos());        
         if (state.getBlock() instanceof BlockGearbox) {
             from = state.getValue(BlockGearbox.facing);
             TileEntity t = world.getTileEntity(getPos().offset(from));
-            if (t != null && t.hasCapability(MysticalMechanicsAPI.MECH_CAPABILITY, from.getOpposite()) && !getGear(from).isEmpty()) {
-                capability.setPower(t.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, from.getOpposite()).getPower(from.getOpposite()), null);
-            } else            	
-                capability.setPower(0, null);
+            if (t != null && t.hasCapability(MysticalMechanicsAPI.MECH_CAPABILITY, from.getOpposite()) && !getGear(from).isEmpty()&& isInput(from)) {
+            	if(t.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, from.getOpposite()).isOutput(from.getOpposite()))
+            		setPower(t.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, from.getOpposite()).getPower(from.getOpposite()), from);
+            } else if(getGear(from).isEmpty()){
+            	setPower(0, from);
+            	System.out.println("gear on "+from +" was missing.");
+            	//this check is simply to make debugging easier reducing the setPower calls to the input side only.
+            	
+            }
+                
         }
         connections = 0;
         List<EnumFacing> toUpdate = new ArrayList<>();
@@ -146,29 +99,12 @@ public class TileEntityGearbox extends TileEntity implements ITickable, IGearbox
         for (EnumFacing f : toUpdate) {
             BlockPos p = getPos().offset(f);
             TileEntity t = world.getTileEntity(p);            
-            if(t != null && t instanceof TileEntityAxle && f != from) {            	            	
-            	//this gets real confusing after a while
-            	TileEntity oppositeOf = world.getTileEntity(((TileEntityAxle)t).getConnection(f.getAxisDirection()).offset(f));
-            	if(oppositeOf != null && oppositeOf instanceof IGearbox) {
-            		if((oppositeOf.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, f.getOpposite()).isOutput(f.getOpposite())) && this.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, f).isOutput(f)) {
-            			//if you made it here you derped and tried to add 2 outputs on 1 axle
-            		}else if(!getGear(f).isEmpty()){
-            				//deals with connections between gearboxes.
-            				t.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, f.getOpposite()).setPower(capability.getPower(f), f.getOpposite());
-            			}else {            				
-            				t.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, f.getOpposite()).setPower(0, f);
-            			}
-            	}else if(!getGear(f).isEmpty()) {
-            		//deals with axles that arent connected to gearboxes.
-            		t.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, f.getOpposite()).setPower(capability.getPower(f), f.getOpposite());
-            	}else {
-            		t.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, f.getOpposite()).setPower(0, f);
+            if(t != null && t.hasCapability(MysticalMechanicsAPI.MECH_CAPABILITY, f.getOpposite()) && this.isOutput(f)) {            	            	
+            	if(!getGear(f).isEmpty()) {            		
+            		t.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, f.getOpposite()).setPower(getPower(f), f.getOpposite());
+            	}else if (getGear(f).isEmpty()) {
+            		t.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, f.getOpposite()).setPower(0, f.getOpposite());
             	}
-            }else if(!getGear(f).isEmpty()){
-            	//deals with anything else that has mech capability.
-            	t.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, f.getOpposite()).setPower(capability.getPower(f), f.getOpposite());
-            }else {            	
-            	t.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, f.getOpposite()).setPower(0, f);
             }
         }
         markDirty();
@@ -177,7 +113,7 @@ public class TileEntityGearbox extends TileEntity implements ITickable, IGearbox
     @Override
     public NBTTagCompound writeToNBT(NBTTagCompound tag) {
         super.writeToNBT(tag);
-        tag.setDouble("mech_power", capability.power);
+        tag.setDouble("mech_power", this.power);
         if (from != null) {
             tag.setInteger("from", from.getIndex());
         }
@@ -192,7 +128,7 @@ public class TileEntityGearbox extends TileEntity implements ITickable, IGearbox
     public void readFromNBT(NBTTagCompound tag) {
         super.readFromNBT(tag);
         if (tag.hasKey("mech_power")) {
-            capability.power = tag.getDouble("mech_power");
+            this.power = tag.getDouble("mech_power");
         }
         if (tag.hasKey("from")) {
             from = EnumFacing.getFront(tag.getInteger("from"));
@@ -231,7 +167,7 @@ public class TileEntityGearbox extends TileEntity implements ITickable, IGearbox
     public <T> T getCapability(Capability<T> capability, EnumFacing facing) {
         if (capability == MysticalMechanicsAPI.MECH_CAPABILITY) {
         	@SuppressWarnings("unchecked") 
-			T result = (T) this.capability;
+			T result = (T) this;
             return result;
         }
         return super.getCapability(capability, facing);
@@ -242,8 +178,7 @@ public class TileEntityGearbox extends TileEntity implements ITickable, IGearbox
         if (facing == null)
             return;
         gears[facing.getIndex()] = stack;
-        world.playSound(null,pos,RegistryHandler.GEAR_ADD,SoundCategory.BLOCKS,1.0f,1.0f);
-        markDirty();
+        world.playSound(null,pos,RegistryHandler.GEAR_ADD,SoundCategory.BLOCKS,1.0f,1.0f);        
     }
 
     @Override
@@ -253,8 +188,7 @@ public class TileEntityGearbox extends TileEntity implements ITickable, IGearbox
         int index = facing.getIndex();
         ItemStack gear = gears[index];
         gears[index] = ItemStack.EMPTY;
-        world.playSound(null,pos,RegistryHandler.GEAR_REMOVE,SoundCategory.BLOCKS,1.0f,1.0f);
-        markDirty();
+        world.playSound(null,pos,RegistryHandler.GEAR_REMOVE,SoundCategory.BLOCKS,1.0f,1.0f);        
         return gear;
     }
 
@@ -286,7 +220,7 @@ public class TileEntityGearbox extends TileEntity implements ITickable, IGearbox
                 if (heldItem.isEmpty()) {
                     player.setHeldItem(hand, ItemStack.EMPTY);
                 }
-                capability.onPowerChange();
+                onPowerChange();
                 return true;
             }
         } else if (!getGear(side).isEmpty()) {
@@ -294,7 +228,7 @@ public class TileEntityGearbox extends TileEntity implements ITickable, IGearbox
             if (!world.isRemote) {
                 world.spawnEntity(new EntityItem(world, player.posX, player.posY + player.height / 2.0f, player.posZ, gear));
             }
-            capability.onPowerChange();
+            onPowerChange();
             return true;
         }
         return false;
@@ -350,10 +284,9 @@ public class TileEntityGearbox extends TileEntity implements ITickable, IGearbox
     }
 
     @Override
-    public boolean shouldPlaySound(int id) {
-        double power =  capability.getPower(null);
+    public boolean shouldPlaySound(int id) {        
         int level = getSoundLevel();
-        int speedindex = getSpeedindex(power);
+        int speedindex = getSpeedindex(this.power);
         return speedindex > 0 && level > 0 && id == SOUND_IDS[speedindex - 1 + level];
     }
 
@@ -369,9 +302,8 @@ public class TileEntityGearbox extends TileEntity implements ITickable, IGearbox
     }
 
     @Override
-    public float getCurrentPitch(int id, float pitch) {
-        double power =  capability.getPower(null);
-        int speedindex = getSpeedindex(power);
+    public float getCurrentPitch(int id, float pitch) {        
+        int speedindex = getSpeedindex(this.power);
         if(speedindex == 1)
             return (float) (power*2 / 25.0);
         else if(speedindex == 2)
@@ -388,13 +320,7 @@ public class TileEntityGearbox extends TileEntity implements ITickable, IGearbox
                 level++;
         }
         return level;
-    }
-
-    @Override
-    public void markDirty() {
-        super.markDirty();       
-        Misc.syncTE(this, isBroken);
-    }
+    } 
 
     public void breakBlock(World world, BlockPos pos, IBlockState state, EntityPlayer player) {
         for (int i = 0; i < 6; i++) {
@@ -404,7 +330,7 @@ public class TileEntityGearbox extends TileEntity implements ITickable, IGearbox
             gears[i] = ItemStack.EMPTY;
         }
         isBroken = true;
-        capability.setPower(0f, null);
+        setPower(0f, null);
         updateNeighbors();
     }
 
@@ -413,15 +339,85 @@ public class TileEntityGearbox extends TileEntity implements ITickable, IGearbox
         if (world.isRemote) {
             handleSound();
             lastAngle = angle;
-            angle += capability.getPower(null);
+            angle += this.power;
             for(EnumFacing facing : EnumFacing.VALUES) {
                 ItemStack gear = getGear(facing);
                 IGearBehavior behavior = MysticalMechanicsAPI.IMPL.getGearBehavior(gear);
                 behavior.visualUpdate(this,facing,gear);
             }
-            boolean newPowered = world.isBlockPowered(pos);
-            if(newPowered != powered)
-                updateNeighbors();
+           /* boolean newPowered = world.isBlockPowered(pos);
+            if(newPowered != powered) {
+            	//updateNeighbors();
+            }*/
+                
         }
     }
+
+	@Override
+	public IBlockState getBlockState() {		
+		return world.getBlockState(pos);
+	}
+
+	@Override
+	public boolean isBroken() {		
+		return this.isBroken;
+	}
+
+	@Override
+	public double getPower(EnumFacing from) {
+		 ItemStack gearStack = getGear(from);
+         if (from != null && gearStack.isEmpty()) {
+             return 0;
+         }
+         IGearBehavior behavior = MysticalMechanicsAPI.IMPL.getGearBehavior(gearStack);
+         double currentPower = 0;
+
+         if (from == TileEntityGearbox.this.from|| from == null)//
+             currentPower = this.power;
+         else
+             currentPower = this.power / ((double) (Math.max(1, getConnections())));
+
+         return behavior.transformPower(this, from, gearStack, currentPower);
+	}
+
+	@Override
+	public void setPower(double value, EnumFacing from) {
+		ItemStack gearStack = getGear(from);
+        if (from != null && gearStack.isEmpty()) {
+        	if(this.power != 0) {
+        		this.power = 0;
+        		onPowerChange();
+        	}
+            
+        }        
+        if (isInput(from)&& !gearStack.isEmpty()) {
+        	double oldPower = power;            
+            if (oldPower != value) {
+            	this.power = value;
+                onPowerChange();
+            }          
+        }		
+	}
+	
+	@Override
+	public boolean isInput(EnumFacing from) {
+		if(from!=null) {
+			return this.from == from;
+		}
+		return false;
+	    
+	}
+
+	@Override
+	public boolean isOutput(EnumFacing from) {
+	    return this.from != from;
+	}
+
+	@Override
+	public void onPowerChange() {		
+        this.updateNeighbors();
+        markDirty();		
+	}
+
+	
 }
