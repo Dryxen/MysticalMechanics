@@ -24,13 +24,13 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.capabilities.Capability;
 
 import javax.annotation.Nullable;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
 public class TileEntityGearbox extends MysticalTileEntityBase implements ITickable, IGearbox, ISoundController {
-    EnumFacing from = null;
-    public boolean powered = false;
+    EnumFacing from = null;   
     private boolean isBroken;
     public int connections = 0;
     public double power = 0;
@@ -71,7 +71,7 @@ public class TileEntityGearbox extends MysticalTileEntityBase implements ITickab
             if (t != null && t.hasCapability(MysticalMechanicsAPI.MECH_CAPABILITY, from.getOpposite()) && !getGear(from).isEmpty()&& isInput(from)) {
             	if(t.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, from.getOpposite()).isOutput(from.getOpposite()))
             		setPower(t.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, from.getOpposite()).getPower(from.getOpposite()), from);
-            } else if(getGear(from).isEmpty()){
+            } else if(getGear(from).isEmpty()&&isInput(from)){
             	setPower(0, from);            	
             	//this check is simply to make debugging easier reducing the setPower calls to the input side only.
             	
@@ -117,6 +117,7 @@ public class TileEntityGearbox extends MysticalTileEntityBase implements ITickab
         for (int i = 0; i < 6; i++) {
             tag.setTag("gear" + i, gears[i].writeToNBT(new NBTTagCompound()));
         }
+        
         tag.setInteger("connections", connections);
         return tag;
     }
@@ -409,7 +410,5 @@ public class TileEntityGearbox extends MysticalTileEntityBase implements ITickab
 	public void onPowerChange() {		
         this.updateNeighbors();
         markDirty();		
-	}
-
-	
+	}	
 }
