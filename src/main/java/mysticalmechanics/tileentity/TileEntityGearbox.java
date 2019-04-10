@@ -382,7 +382,7 @@ public class TileEntityGearbox extends MysticalTileEntityBase implements ITickab
         	}
             
         }        
-        if (isInput(from)&& !gearStack.isEmpty()) {
+        if (isInput(from)&& !gearStack.isEmpty()) {        	
         	double oldPower = power;            
             if (oldPower != value) {
             	this.power = value;
@@ -393,7 +393,7 @@ public class TileEntityGearbox extends MysticalTileEntityBase implements ITickab
 	
 	@Override
 	public boolean isInput(EnumFacing from) {
-		if(from!=null) {
+		if(from!=null) {			
 			return this.from == from;
 		}
 		return false;
