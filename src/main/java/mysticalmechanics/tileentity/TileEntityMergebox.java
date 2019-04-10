@@ -1,6 +1,5 @@
 package mysticalmechanics.tileentity;
 
-import mysticalmechanics.api.DefaultMechCapability;
 import mysticalmechanics.api.IGearBehavior;
 import mysticalmechanics.api.IGearbox;
 import mysticalmechanics.api.MysticalMechanicsAPI;

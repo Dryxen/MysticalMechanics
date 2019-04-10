@@ -42,9 +42,7 @@ public class TileEntityGearbox extends MysticalTileEntityBase implements ITickab
             ItemStack.EMPTY,
             ItemStack.EMPTY
     };
-    public double angle, lastAngle;
-
-    //public DefaultMechCapability capability;
+    public double angle, lastAngle;    
 
     //Don't look at me
     public static final int SOUND_SLOW_LV1 = 1;
@@ -74,8 +72,7 @@ public class TileEntityGearbox extends MysticalTileEntityBase implements ITickab
             	if(t.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, from.getOpposite()).isOutput(from.getOpposite()))
             		setPower(t.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, from.getOpposite()).getPower(from.getOpposite()), from);
             } else if(getGear(from).isEmpty()){
-            	setPower(0, from);
-            	System.out.println("gear on "+from +" was missing.");
+            	setPower(0, from);            	
             	//this check is simply to make debugging easier reducing the setPower calls to the input side only.
             	
             }
@@ -344,12 +341,7 @@ public class TileEntityGearbox extends MysticalTileEntityBase implements ITickab
                 ItemStack gear = getGear(facing);
                 IGearBehavior behavior = MysticalMechanicsAPI.IMPL.getGearBehavior(gear);
                 behavior.visualUpdate(this,facing,gear);
-            }
-           /* boolean newPowered = world.isBlockPowered(pos);
-            if(newPowered != powered) {
-            	//updateNeighbors();
-            }*/
-                
+            }               
         }
     }
 

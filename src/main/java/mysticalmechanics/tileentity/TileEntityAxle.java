@@ -31,12 +31,7 @@ public class TileEntityAxle extends MysticalTileEntityBase implements ITickable,
 	
 	public TileEntityAxle() {
 		super();		
-	}
-	
-	/*public Axis getAxis() {
-		IBlockState state = world.getBlockState(getPos());		
-		return state.getValue(BlockAxle.facing).getAxis();
-	}*/
+	}	
 	
 	public void setConnection() {
 		if(facing == null || front == null || back == null) {
@@ -50,20 +45,15 @@ public class TileEntityAxle extends MysticalTileEntityBase implements ITickable,
 	
 	public BlockPos getConnection(AxisDirection dir) {
 		return dir == AxisDirection.POSITIVE ? front : back;
-	}
-	
-	/*public boolean isConnection(AxisDirection dir) {
-		return getConnection(dir).equals(this.pos);
-	}*/
+	}	
 	
 	private void checkAndSetInput(EnumFacing from) {
 		if(from != null) {
 			TileEntity t = world.getTileEntity(getPos().offset(from));
 			if(t!=null && t.hasCapability(MysticalMechanicsAPI.MECH_CAPABILITY, from)) {				
-				//if the tile entity is a output and we dont have power set the inputside.
-				if(t.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, from).isOutput(from.getOpposite()) && power == 0) {					
-					this.inputSide = from;
-					
+				//if the tile entity is a output and we dont have power set the inputside. 
+				if(t.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, from).isOutput(from.getOpposite())&& power == 0) {					
+					this.inputSide = from;					
 				}
 			}
 		}
@@ -88,28 +78,27 @@ public class TileEntityAxle extends MysticalTileEntityBase implements ITickable,
 		if(facing == null) {
 			setConnection();
 		}
-		EnumFacing backFacing = facing.getOpposite();
-		EnumFacing frontFacing = facing;
+		
+		EnumFacing frontFacing = world.getBlockState(this.pos).getValue(BlockAxle.facing).getOpposite();
+		EnumFacing backFacing = frontFacing.getOpposite();
 		TileEntity frontTile = world.getTileEntity(front);
 		TileEntity backTile = world.getTileEntity(back);
 		
-		if (frontTile != null && frontTile.hasCapability(MysticalMechanicsAPI.MECH_CAPABILITY, backFacing)){
-			System.out.println("front check");
-			if(frontTile.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, backFacing).isOutput(backFacing)&&this.isInput(frontFacing)){								
+		//input updates
+		if (frontTile != null && frontTile.hasCapability(MysticalMechanicsAPI.MECH_CAPABILITY, backFacing)){			
+			if(frontTile.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, backFacing).isOutput(backFacing)&&this.isInput(frontFacing)){				
 				setPower(frontTile.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, backFacing).getPower(backFacing), frontFacing);
 			}
 		}			
 			
-		if (backTile != null && backTile.hasCapability(MysticalMechanicsAPI.MECH_CAPABILITY, frontFacing)){
-			System.out.println("back check");
-			if(backTile.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, frontFacing).isOutput(frontFacing)&&this.isInput(backFacing)) {				
-				setPower(backTile.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, frontFacing).getPower(frontFacing),backFacing);
+		if (backTile != null && backTile.hasCapability(MysticalMechanicsAPI.MECH_CAPABILITY, frontFacing)){			
+			if(backTile.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, frontFacing).isOutput(frontFacing)&&this.isInput(backFacing)) {
+				System.out.println("Back set power on"+backFacing);
+				
 			}
-		}			
+		}		
 		
-		/*checkAndUpdateInput(frontTile, backFacing);
-		checkAndUpdateInput(backTile, frontFacing);*/
-		
+		//output updates
 		if (frontTile != null && frontTile.hasCapability(MysticalMechanicsAPI.MECH_CAPABILITY, backFacing)){		
 			if(frontTile.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, backFacing).isInput(backFacing)){				
 				frontTile.getCapability(MysticalMechanicsAPI.MECH_CAPABILITY, backFacing).setPower(getPower(frontFacing),backFacing);
@@ -140,18 +129,6 @@ public class TileEntityAxle extends MysticalTileEntityBase implements ITickable,
 		return null;
 	}
 	
-
-	/*public BlockPos checkAndReturnConnection(BlockPos checkPos, AxisDirection dir) {
-		if (!world.isBlockLoaded(checkPos))
-			return null;
-		TileEntity checkTile = world.getTileEntity(checkPos);
-		if (checkTile instanceof TileEntityAxle && ((TileEntityAxle) checkTile).getAxis() == getAxis())
-			return ((TileEntityAxle) checkTile).getConnection(dir);
-		else
-			return getPos();
-	}	*/
-
-	
 	@Override
 	public void updateNeighbors() {
 		updatePower();		
@@ -160,17 +137,16 @@ public class TileEntityAxle extends MysticalTileEntityBase implements ITickable,
 	public void neighborChanged(BlockPos from) {
 		setConnection();
 		if(isValidSide(from)) {			
-			checkAndSetInput(comparePosToSides(from));			
-			System.out.println("side was valid");
+			checkAndSetInput(comparePosToSides(from));		
 			updateNeighbors();
 		}
 	}
 	
 	private EnumFacing comparePosToSides(BlockPos from) {
 			if(from.equals(front)) {
-				return facing;
+				return world.getBlockState(this.pos).getValue(BlockAxle.facing).getOpposite();
 			}else if(from.equals(back)) {				
-				return facing.getOpposite();
+				return world.getBlockState(this.pos).getValue(BlockAxle.facing);
 			}
 			return null;			
 	}
@@ -178,12 +154,13 @@ public class TileEntityAxle extends MysticalTileEntityBase implements ITickable,
 	@Override
 	public NBTTagCompound writeToNBT(NBTTagCompound tag) {
 		super.writeToNBT(tag);
+		//switched facing and inputSide to a string value for until i can figure out the issue with reading int value.
 		tag.setDouble("mech_power", this.power);
 		if (facing != null) {
-            tag.setInteger("facing", facing.getIndex());
-        }
+            tag.setString("facing", facing.getName());
+        }		
 		if (inputSide != null) {
-            tag.setInteger("inputSide", inputSide.getIndex());
+            tag.setString("inputSide", inputSide.getName());
         }
 		if(front != null) {
 			int[] pos = {
@@ -203,13 +180,14 @@ public class TileEntityAxle extends MysticalTileEntityBase implements ITickable,
 	@Override
 	public void readFromNBT(NBTTagCompound tag) {
 		super.readFromNBT(tag);
+		//facing and inputSide aren't being read correctly by Enumfacing.getFront I need to figure out why.
 		this.power = tag.getDouble("mech_power");
 		if (tag.hasKey("facing")) {
-            facing = EnumFacing.getFront(tag.getInteger("from"));
-        }
+            this.facing = EnumFacing.byName(tag.getString("from"));
+        }		
 		if(tag.hasKey("inputSide")) {
-			inputSide = EnumFacing.getFront(tag.getInteger("inputSide"));
-		}
+			this.inputSide = EnumFacing.byName(tag.getString("inputSide"));
+		}		
 		if(tag.hasKey("front")){
 			int[] pos = tag.getIntArray("front");
 			this.front = new BlockPos(pos[0],pos[1],pos[2]);
@@ -304,8 +282,7 @@ public class TileEntityAxle extends MysticalTileEntityBase implements ITickable,
 		}else if(isInput(from)){					
 			double oldPower = power; 
 			if (isValidSide(from)&& oldPower != value){			
-				this.power = value;
-				//System.out.println(from+" Was a valid Side, power is now: "+power);
+				this.power = value;				
 				onPowerChange();
 			}
 		}		
@@ -322,8 +299,7 @@ public class TileEntityAxle extends MysticalTileEntityBase implements ITickable,
 	
 	@Override
 	public boolean isOutput(EnumFacing from) {
-		if(from != null && inputSide != null) {
-			//System.out.println("Axle output was "+inputSide.getOpposite()+" and from was "+from+" was output: "+ (inputSide.getOpposite() == from));
+		if(from != null && inputSide != null) {			
 			return inputSide.getOpposite() == from;
 		}
 		return false;

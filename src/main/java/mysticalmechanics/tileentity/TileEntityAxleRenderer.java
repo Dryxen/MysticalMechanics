@@ -35,7 +35,7 @@ public class TileEntityAxleRenderer extends TileEntitySpecialRenderer<TileEntity
         if (tile != null){
             IBlockState state = tile.getWorld().getBlockState(tile.getPos());
             if (state.getBlock() instanceof BlockAxle){
-                //EnumFacing.Axis axis = state.getValue(BlockAxle.axis);
+                
             	EnumFacing.Axis axis = state.getValue(BlockAxle.facing).getAxis();
             	EnumFacing facing = state.getValue(BlockAxle.facing);
                 ResourceLocation texture = new ResourceLocation(Minecraft.getMinecraft().getBlockRendererDispatcher().getBlockModelShapes().getTexture(state).getIconName());
@@ -63,11 +63,7 @@ public class TileEntityAxleRenderer extends TileEntitySpecialRenderer<TileEntity
                 }
                 
                 TileEntityAxle frontAxle = tile.getConnectionTile(tile.getPos().offset(facing),facing);
-                TileEntityAxle backAxle = tile.getConnectionTile(tile.getPos().offset(facing.getOpposite()), facing.getOpposite());
-
-                /*TileEntityAxle frontAxle = tile.getConnectionTile(EnumFacing.AxisDirection.NEGATIVE);
-                TileEntityAxle backAxle = tile.getConnectionTile(EnumFacing.AxisDirection.POSITIVE);*/                
-                //double Power = tile.getPower();
+                TileEntityAxle backAxle = tile.getConnectionTile(tile.getPos().offset(facing.getOpposite()), facing.getOpposite());              
                 
                 if(frontAxle != null) {
                 	 tile.angle = frontAxle.angle;
